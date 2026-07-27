@@ -1,0 +1,16 @@
+# Creates the four coordinates
+A1 3
+B1 4
+C1 9
+D1 12
+
+# Computes delta-x^2
+A2 =(PRODUCT (SUB C1 A1) (SUB C1 A1))
+# Computes delta-y^2
+B2 =(PRODUCT (SUB D1 B1) (SUB D1 B1))
+# Computes the rest of the distance formula
+A3 =(SQRT (SUM A2:B2))
+B3 =(< A3 10)
+
+# Computes the distance formula all in one step
+A4 =(SQRT (SUM (PRODUCT (SUB C1 A1) (SUB C1 A1)) (PRODUCT (SUB D1 B1) (SUB D1 B1))))
