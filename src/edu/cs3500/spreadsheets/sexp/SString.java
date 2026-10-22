@@ -39,4 +39,13 @@ public class SString implements Sexp {
   public int hashCode() {
     return Objects.hash(val);
   }
+
+  /**
+   * raw text for the GUI.
+   * @return raw text for the GUI.
+   */
+  public String getValue() {
+    return val;
+  }
+
 }

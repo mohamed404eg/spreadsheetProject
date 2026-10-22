@@ -1,3 +1,5 @@
+import edu.cs3500.spreadsheets.sexp.Parser;
+
 class ParserTest {
 
   public static void main(String[] args) {
@@ -10,7 +12,7 @@ class ParserTest {
 
     // (PRODUCT (SUB C1 A1) (SUB C1 A1))
     // System.out.print(Parser.parse("(PRODUCT (SUB C1 A1) (SUB C1 A1))").accept(new SexVisitorImp()));
-
+    System.out.print(Parser.parse("A!A1"));
   }
 
 }

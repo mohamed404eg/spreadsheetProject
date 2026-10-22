@@ -79,10 +79,17 @@ public class Coord {
    *
    * @param s
    * @return the value as Coord
+   * @throws IllegalArgumentException if coord invalid syntax
    */
   public static Coord NameToCoord(String s) {
-    int col = Coord.colNameToIndex(s.replaceAll("\\d", ""));
-    int row = Integer.parseInt(s.replaceAll("\\D", ""));
+    String cols = s.replaceAll("\\d", "");
+    String rows = s.replaceAll("\\D", "");
+    if(cols.isEmpty() || rows.isEmpty()){
+      throw new IllegalArgumentException("Coord Invalid Syntax");
+    }
+    int row = Integer.parseInt(rows);
+    int col = Coord.colNameToIndex(cols);
+
     return new Coord(col, row);
   }
 

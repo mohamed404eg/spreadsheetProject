@@ -2,17 +2,26 @@ package edu.cs3500.spreadsheets.sexp;
 
 import edu.cs3500.spreadsheets.model.Coord;
 import edu.cs3500.spreadsheets.model.Operations;
+import edu.cs3500.spreadsheets.model.WorkBook;
 import edu.cs3500.spreadsheets.model.Worksheet;
 import edu.cs3500.spreadsheets.model.WorksheetModel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class evaluator implements SexpVisitor<Sexp>, Operations {
 
   Worksheet<Sexp> model;
-
+  WorkBook<Sexp> workbook;
   public evaluator(Worksheet<Sexp> worksheetModel) {
     this.model = worksheetModel;
+  }
+  public evaluator(Worksheet<Sexp> worksheetModel, WorkBook<Sexp> workbook) {
+    this.model = worksheetModel;
+    this.workbook = workbook;
+  }
+  public evaluator(WorkBook<Sexp> workbook) {
+    this.workbook = workbook;
   }
 
   // for test
@@ -31,17 +40,18 @@ public class evaluator implements SexpVisitor<Sexp>, Operations {
 
   @Override
   public Sexp visitSList(List<Sexp> l) {
-    List<Sexp> expanded = new ArrayList<Sexp>(l);
+    List<Sexp> expanded = new ArrayList<Sexp>();
 
-    for (int i = 0; i < l.size(); i++) {
-      if(!UtilVisitor.isSList(l.get(i))){
-        if (l.get(i).toString().contains(":")) {
-          expanded = new ArrayList<>(l.subList(0, i));
-          expanded.addAll(expandGroup(l.get(i)));
-          expanded.addAll(l.subList(i + 1, l.size()));
-        }
+    // expand
+    for (Sexp sexp : l) {
+      if (!UtilVisitor.isSList(sexp) && sexp.toString().contains(":")) {
+        expanded.addAll(expandGroup(sexp));
+      } else {
+        // this item no need for expand
+        expanded.add(sexp);
       }
     }
+
 
     String opt = expanded.get(0).toString().toUpperCase();
 
@@ -65,28 +75,38 @@ public class evaluator implements SexpVisitor<Sexp>, Operations {
   }
 
   private List<Sexp> expandGroup(Sexp sexp) {
-    String[] split = sexp.toString().split(":");
-
-    int colStart = Coord.colNameToIndex(split[0].replaceAll("\\d", ""));
-    int colEnd = Coord.colNameToIndex(split[1].replaceAll("\\d", ""));
-
-    int rowStart = Integer.parseInt(split[0].replaceAll("\\D", ""));
-    int rowEnd = Integer.parseInt(split[1].replaceAll("\\D", ""));
-
-    List<Sexp> sexpList = new ArrayList<>();
-    for (int i = colStart; i <= colEnd; i++) {
-      for (int j = rowStart; j <= rowEnd; j++) {
-        sexpList.add(model.getCell(new Coord(i, j)));
-      }
-    }
-
-    return sexpList;
+    return UtilVisitor.expandGroup(sexp, model, workbook);
   }
 
 
   @Override
   public Sexp visitSymbol(String s) {
-    return model.getCell(Coord.NameToCoord(s)).accept(this);
+    if(s.contains("!")){
+    //  String[] l = separate(s);
+      return workbook.get(s);
+    }
+
+    return model.getCell(Coord.NameToCoord(s));
+  }
+
+  /**
+   * return the sheetName + cellName.
+   * @param in
+   * @return Array[0] = sheetName , Array[1] = cellName
+   * @throws IllegalArgumentException if there's any missing value.
+   */
+  private String[] separate(String in) {
+    String[] list =  in.split("!");
+    if(list.length < 2 ){
+      throw new IllegalArgumentException("Name error");
+    }
+    if(list[0].isEmpty()){
+      throw new IllegalArgumentException("Sheet name is empty");
+    }
+    if(list[1].isEmpty()){
+      throw new IllegalArgumentException("Cell name is empty");
+    }
+    return list;
   }
 
   @Override
@@ -100,30 +120,30 @@ public class evaluator implements SexpVisitor<Sexp>, Operations {
     for (Sexp sexp : arg) {
       if (sexp != null) {
         Sexp v = sexp.accept(this);
-        if (UtilVisitor.isNumber(v)) {
-          sum = new SNumber(UtilVisitor.requireNumber(v).num + sum.num);
-        }
+          if (v != null && UtilVisitor.isNumber(v)) {
+            sum = new SNumber(UtilVisitor.requireNumber(v).num + sum.num);
+          }
       }
     }
 
     return sum;
   }
 
-  // another implement for efficiency, didn't improve much , i think expand its not good efficiency
-  public Sexp sum(List<Sexp> arg, double res) {
-    Sexp ex = arg.remove(0);
-    if (ex != null) {
-      Sexp v = ex.accept(this);
-      if (UtilVisitor.isNumber(v)) {
-        res += UtilVisitor.requireNumber(v).num;
-      }
-    }
-    if (arg.isEmpty()) {
-      return new SNumber(res);
-    } else {
-      return sum(arg, res);
-    }
-  }
+//  // another implement for efficiency, didn't improve much , i think expand its not good efficiency
+//  public Sexp sum(List<Sexp> arg, double res) {
+//    Sexp ex = arg.remove(0);
+//    if (ex != null) {
+//      Sexp v = ex.accept(this);
+//      if (UtilVisitor.isNumber(v)) {
+//        res += UtilVisitor.requireNumber(v).num;
+//      }
+//    }
+//    if (arg.isEmpty()) {
+//      return new SNumber(res);
+//    } else {
+//      return sum(arg, res);
+//    }
+//  }
 
   @Override
   public Sexp sub(Sexp sb1, Sexp sb2) {
@@ -178,12 +198,12 @@ public class evaluator implements SexpVisitor<Sexp>, Operations {
    * @param l
    * @return true if it has ":"
    */
-  static public boolean containGroup(List<Sexp> l) {
+   public boolean containGroup(List<Sexp> l) {
     boolean res = false;
     for (int i = 0; i < l.size(); i++) {
       Sexp sexp = l.get(i);
       if (sexp instanceof SList) {
-        res = containGroup((List<Sexp>) sexp);
+        res = containGroup(expandGroup(sexp));
       } else {
         if (sexp.toString().contains(":")) {
           res = true;
@@ -191,6 +211,20 @@ public class evaluator implements SexpVisitor<Sexp>, Operations {
       }
     }
     return res;
+  }
+
+  /**
+   * get the sexp, giving sheetName + cell or just cell.
+   * @param name
+   * @return Sexp.
+   */
+ private  Sexp getSexp(String name){
+     if(name.contains("!")){
+       return workbook.get(name);
+     }else {
+       String[] list = separate(name);
+       return model.getCell(Coord.NameToCoord(list[0]));
+     }
   }
 
 }

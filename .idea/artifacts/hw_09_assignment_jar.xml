@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="hw_09_assignment:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/hw_09_assignment_jar</output-path>
+    <root id="archive" name="hw_09_assignment.jar">
+      <element id="module-output" name="hw_09_assignment" />
+    </root>
+  </artifact>
+</component>

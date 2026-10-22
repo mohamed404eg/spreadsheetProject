@@ -1,27 +1,33 @@
-package model;
+package edu.cs3500.spreadsheets.model;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-import edu.cs3500.spreadsheets.model.Coord;
-import edu.cs3500.spreadsheets.model.Worksheet;
-import edu.cs3500.spreadsheets.model.WorksheetModel;
 import edu.cs3500.spreadsheets.sexp.SBoolean;
 import edu.cs3500.spreadsheets.sexp.SNumber;
 import edu.cs3500.spreadsheets.sexp.SString;
 import edu.cs3500.spreadsheets.sexp.Sexp;
+import java.util.HashMap;
+import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 
 public abstract class WorksheetModelTest {
 
   Worksheet model;
+  Random rand = new Random();
 
   public abstract Worksheet wsm();
 
   @Before
   public void init() {
     model = wsm();
+  }
+
+  Coord randomCoord() {
+    return new Coord(Math.abs(rand.nextInt()) + 1,
+        Math.abs(rand.nextInt()) + 1);
   }
 
   @Test
@@ -112,17 +118,34 @@ public abstract class WorksheetModelTest {
   }
 
   @Test
+  public void sumNull() {
+    model.set(new Coord(1, 1), "1");
+    model.set(new Coord(3, 1), "(SUM A1 C2 D1)");
+    assertEquals(new SNumber(1), model.getCell(new Coord(3, 1)));
+  }
+
+  @Test
+  public void subNull() {
+    model.set(new Coord(1, 1), "1");
+    model.set(new Coord(1, 3), "(SUB A1 A2)");
+  }
+
+  @Test
   public void gsSUB() {
     model.set(new Coord(1, 1), "1");
     model.set(new Coord(1, 2), "2");
     model.set(new Coord(1, 3), "(SUB A1 A2)");
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  // group of just tow variable gonna work.
   public void gsSUBMoreArgGroup() {
     model.set(new Coord(1, 1), "1");
     model.set(new Coord(1, 2), "2");
     model.set(new Coord(1, 3), "(SUB A1:A2)");
+    assertEquals(new SNumber(-2), model.getCell(new Coord(1, 3)));
+    model.set(new Coord(1, 3), "(SUB A2:A1)");
+    assertEquals(new SNumber(1), model.getCell(new Coord(1, 3)));
+
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -159,6 +182,23 @@ public abstract class WorksheetModelTest {
     model.set(new Coord(1, 4), "(SUB 1 A4)");
   }
 
+  @Test(expected = IllegalArgumentException.class)
+  public void InsteadSUBFormula() {
+    model.set(new Coord(1, 1), "(SUB (SUM B:C E:D) (SUM B:C E:D) 200)");
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+
+    // D
+    model.set(new Coord(4, 1), "1");
+
+    // E
+    model.set(new Coord(5, 1), "1");
+  }
+
 
   @Test
   public void getReferenceAndSet() {
@@ -175,6 +215,13 @@ public abstract class WorksheetModelTest {
     model.set(new Coord(1, 3), "(PRODUCT A1 A2 2)");
     assertEquals("4.0", model.getCell(new Coord(1, 3)).toString());
     assertEquals(new SNumber(4), model.getCell(new Coord(1, 3)));
+  }
+
+  @Test
+  public void gsPRODUCTNull() {
+    model.set(new Coord(1, 1), "1");
+    model.set(new Coord(1, 3), "(PRODUCT A1 A2)");
+    assertEquals(new SNumber(1), model.getCell(new Coord(1, 3)));
   }
 
   @Test
@@ -233,6 +280,21 @@ public abstract class WorksheetModelTest {
     model.set(new Coord(1, 4), "(< A2 A1)");
     assertEquals("false", model.getCell(new Coord(1, 4)).toString());
     assertEquals(new SBoolean(false), model.getCell(new Coord(1, 4)));
+  }
+  @Test(expected = IllegalArgumentException.class)
+  public void gsLess3args() {
+    model.set(new Coord(1, 1), "4");
+    model.set(new Coord(1, 2), "6");
+    model.set(new Coord(1, 3), "6");
+    model.set(new Coord(1, 4), "(< A1 A2 A3)");
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void gsLessBoolean() {
+    model.set(new Coord(1, 1), "4");
+    model.set(new Coord(1, 2), "false");
+    model.set(new Coord(1, 4), "(< A1 A2)");
+    assertEquals("false", model.getCell(new Coord(1, 4)).toString());
   }
 
   @Test
@@ -318,39 +380,41 @@ public abstract class WorksheetModelTest {
   // getRows
   @Test
   public void maxRows() {
-    // assume its 5
-    assertEquals(5, model.getRows());
+    assertEquals(0, model.getMaxRows());
+    model.set(new Coord(1, 20), "1");
+    assertEquals(20, model.getMaxRows());
   }
 
   @Test
   public void maxRowsAfterSet20() {
+    assertEquals(0, model.getMaxRows());
     model.set(new Coord(1, 20), "1");
-    assertEquals(40, model.getRows());
+    assertEquals(20, model.getMaxRows());
   }
 
   // getColumns
   @Test
   public void getColumnsTestDefault() {
-    assertEquals(10, model.getColumns());
+    assertEquals(0, model.getMaxColumns());
   }
 
   @Test
   public void getColumnsTest() {
     model.set(new Coord(13, 3), "1");
-    assertEquals(26, model.getColumns());
+    assertEquals(13, model.getMaxColumns());
   }
 
   // getColumnSize
 
   @Test
   public void getColumnSizeDefault() {
-    assertEquals(5, model.getColumnSize(1));
+    assertEquals(0, model.getColumnMaxSize(1));
   }
 
   @Test
   public void getColumnSizeSet() {
     model.set(new Coord(1, 7), "1");
-    assertEquals(14, model.getColumnSize(1));
+    assertEquals(7, model.getColumnMaxSize(1));
   }
 
 
@@ -427,11 +491,10 @@ public abstract class WorksheetModelTest {
   }
 
 
-  @Test(expected = StringIndexOutOfBoundsException.class)
+  @Test(expected = IllegalArgumentException.class)
   // NEED MORE REVIEW WHEN THE NO COLUMN BY THIS NAME
   public void wrongReference() {
     model.set(new Coord(1, 1), "A");
-    model.getCell(new Coord(1, 1));
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -459,6 +522,7 @@ public abstract class WorksheetModelTest {
     model.set(new Coord(2, 2), "2");
     model.set(new Coord(3, 1), "(SQRT (SUM A2:B2))");
   }
+
   @Test
   public void stuckCaseGet() {
     model.set(new Coord(1, 2), "5");
@@ -481,6 +545,7 @@ public abstract class WorksheetModelTest {
     model.set(new Coord(2, 2), "2");
     model.set(new Coord(3, 1), "(SQRT (SUM A2:A1))");
   }
+
   @Test(expected = IllegalArgumentException.class)
   public void stuckCaseReverseOrderRowAndColumn() {
     model.set(new Coord(1, 2), "1");
@@ -491,7 +556,8 @@ public abstract class WorksheetModelTest {
   @Test
   public void String() {
     model.set(new Coord(1, 1), "\"Jack says \\\"hi\\\". Path: C:\\\\Users\\\\\"");
-    assertEquals(new SString("Jack says \"hi\". Path: C:\\Users\\") ,model.getCell(new Coord(1, 1)));
+    assertEquals(new SString("Jack says \"hi\". Path: C:\\Users\\"),
+        model.getCell(new Coord(1, 1)));
   }
 
   @Test
@@ -501,9 +567,367 @@ public abstract class WorksheetModelTest {
 
   }
 
+  @Test(expected = IllegalArgumentException.class)
+  public void symbolInvalidSyntax() {
+    model.set(new Coord(1, 1), "hi");
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void symbolInvalidSyntaxSum() {
+    model.set(new Coord(1, 1), "(SUM A1 hi)");
+  }
+
+
+  @Test
+  public void setThenRemove() {
+    Coord co = new Coord(1, 1);
+    model.set(co, "\"hi\"");
+    assertNotNull(model.getCell(co));
+    model.remove(co);
+    assertNull(model.getCell(co));
+  }
+
+  @Test
+  public void RemoveCellNotSET() {
+    Coord co = new Coord(1, 1);
+    model.remove(co);
+    assertNull(model.getCell(co));
+  }
+
+  @Test
+  public void RemoveCellNotExist() {
+    Coord co = randomCoord();
+    //System.out.println(co.toString());
+    model.remove(co);
+    assertNull(model.getCell(co));
+  }
+
+  @Test
+  public void AddATRandomCoord() {
+    Coord co = randomCoord();
+    // System.out.println(co.toString());
+    model.set(co, "1");
+    assertEquals(new SNumber(1), model.getCell(co));
+  }
+
+  // getCellsInColumn
+
+  @Test
+  public void getCellsInColumnTest() {
+    model.set(new Coord(1, 1), "11");
+    model.set(new Coord(1, 5), "15");
+    model.set(new Coord(4, 5), "45");
+
+    HashMap<Coord, Sexp> cells = new HashMap<>();
+    cells.put(new Coord(1, 1), new SNumber(11));
+    cells.put(new Coord(1, 5), new SNumber(15));
+    // cells.put(new Coord(4, 5), new SNumber(45));
+    assertEquals(cells, model.getCellsInColumn(1));
+  }
+
+  // getCellsInRow
+
+  @Test
+  public void getCellsInRowTest() {
+    model.set(new Coord(1, 1), "11");
+    model.set(new Coord(1, 5), "15");
+    model.set(new Coord(4, 1), "45");
+
+    HashMap<Coord, Sexp> cells = new HashMap<>();
+    cells.put(new Coord(1, 1), new SNumber(11));
+    cells.put(new Coord(4, 1), new SNumber(45));
+
+    assertEquals(cells, model.getCellsInRow(1));
+  }
+
+  // column references
+
+
+  @Test
+  public void ColumnSum() {
+    model.set(new Coord(1, 1), "1");
+    model.set(new Coord(1, 5), "1");
+    model.set(new Coord(1, 3), "1");
+
+    model.set(new Coord(2, 3), "1");
+    model.set(new Coord(2, 49), "1");
+    model.set(new Coord(3, 1), "(SUM A:B)");
+
+    assertEquals(new SNumber(5), model.getCell(new Coord(3, 1)));
+  }
+
+  @Test
+  public void ColumnSumBackWard() {
+    model.set(new Coord(1, 1), "1");
+    model.set(new Coord(1, 5), "1");
+    model.set(new Coord(1, 3), "1");
+
+    model.set(new Coord(2, 3), "1");
+    model.set(new Coord(2, 49), "1");
+    model.set(new Coord(3, 1), "(SUM B:A)");
+
+    assertEquals(new SNumber(5), model.getCell(new Coord(3, 1)));
+  }
+
+  @Test
+  public void ColumnSumADCE() {
+
+    model.set(new Coord(1, 1), "(SUM B:C E:D)");
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+
+    // D
+    model.set(new Coord(4, 1), "1");
+
+    // E
+    model.set(new Coord(5, 1), "1");
+
+    assertEquals(new SNumber(4), model.getCell(new Coord(1, 1)));
+  }
+
+
+  @Test(expected = IllegalArgumentException.class)
+  // ig we cant sum in the same column would be self reference
+  public void ColumnSumSelfReference() {
+    model.set(new Coord(1, 1), "1");
+    model.set(new Coord(1, 5), "1");
+    model.set(new Coord(1, 3), "1");
+
+    model.set(new Coord(2, 3), "1");
+    model.set(new Coord(2, 49), "1");
+    model.set(new Coord(2, 1), "(SUM A:B)");
+
+    assertEquals(new SNumber(5), model.getCell(new Coord(3, 1)));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void ColumnSumNumberWrong() {
+    model.set(new Coord(1, 1), "1");
+    model.set(new Coord(1, 5), "1");
+    model.set(new Coord(1, 3), "1");
+
+    model.set(new Coord(2, 3), "1");
+    model.set(new Coord(2, 49), "1");
+    model.set(new Coord(3, 1), "(SUM 2:3)");
+
+    assertEquals(new SNumber(5), model.getCell(new Coord(3, 1)));
+  }
+
+  @Test
+  public void ColumnSumInseadSUM() {
+    model.set(new Coord(1, 1), "(SUM (SUM B:C E:D) 200)");
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+
+    // D
+    model.set(new Coord(4, 1), "1");
+
+    // E
+    model.set(new Coord(5, 1), "1");
+
+    assertEquals(new SNumber(204), model.getCell(new Coord(1, 1)));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void ColumnInvalidGroupInsideInsteadSub() {
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+
+    // D
+    model.set(new Coord(4, 1), "1");
+
+    // E
+    model.set(new Coord(5, 1), "1");
+
+    model.set(new Coord(1, 1), "(SUB (SUM D1:C2) 200)");
+
+    assertEquals(new SNumber(-196), model.getCell(new Coord(1, 1)));
+  }
+
+
+  @Test
+  public void ColumnSumInsideSub() {
+    model.set(new Coord(1, 1), "(SUB (SUM B:C E:D) 200)");
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+
+    // D
+    model.set(new Coord(4, 1), "1");
+
+    // E
+    model.set(new Coord(5, 1), "1");
+
+    assertEquals(new SNumber(-196), model.getCell(new Coord(1, 1)));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void ColumnSubColumnGroup() {
+    model.set(new Coord(1, 1), "(SUB B:C)");
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+  }
+
+  @Test
+  public void ColumnGroupPRODUCT() {
+    model.set(new Coord(1, 1), "(SUB (PRODUCT B:C E:D) 200)");
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+
+    // D
+    model.set(new Coord(4, 1), "1");
+
+    // E
+    model.set(new Coord(5, 1), "1");
+
+    assertEquals(new SNumber(-199), model.getCell(new Coord(1, 1)));
+  }
+
+  @Test
+  public void ColumnGroupSubWorks() {
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+
+    // its work bc after expand jt has 2
+    model.set(new Coord(1, 1), "(SUB B:C)");
+
+
+    assertEquals(new SNumber(0), model.getCell(new Coord(1, 1)));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void ColumnSQRTColumnGroup() {
+    model.set(new Coord(1, 1), "(SQRT B:C)");
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void ColumnLessColumnGroup() {
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+
+    model.set(new Coord(1, 1), "(< B:C 1)");
+
+    //assertEquals(new SBoolean(false), model.getCell(new Coord(1, 1)));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void ColumnLessRowGroup() {
+
+    model.set(new Coord(1, 1), "1");
+    model.set(new Coord(1, 2), "1");
+
+    model.set(new Coord(1, 1), "(< A1:A2)");
+
+    //assertEquals(new SBoolean(false), model.getCell(new Coord(1, 1)));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void ColumnLessRowGroupDiffColumn() {
+    model.set(new Coord(1, 1), "1");
+    model.set(new Coord(2, 2), "1");
+
+    model.set(new Coord(1, 1), "(< A1:B2)");
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void ColumnLessColumnGroupDifferentErrorArgsLess2() {
+    model.set(new Coord(1, 1), "(< B:C 1)");
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+  }
+
+
+  @Test(expected = IllegalArgumentException.class)
+  public void ColumnLessColumnGroupWork() {
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "1");
+
+    // its work bc after expand jt has 2
+    model.set(new Coord(1, 1), "(< B:C)");
+
+
+ // assertEquals(new SBoolean(false), model.getCell(new Coord(1, 1)));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void ColumnLessColumnBooleanGroupWork() {
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "false");
+
+    // its work bc after expand jt has 2
+    model.set(new Coord(1, 1), "(< B:C)");
+
+
+ //   assertEquals(new SBoolean(false), model.getCell(new Coord(1, 1)));
+  }
+  @Test
+  public void ColumnGroupAVG() {
+
+    // b
+    model.set(new Coord(2, 1), "1");
+
+    // c
+    model.set(new Coord(3, 1), "false");
+
+    model.set(new Coord(7, 1), "true"); // just random add :).
+
+    // its work bc after expand jt has 2
+    model.set(new Coord(1, 1), "(AVG B:C)");
+
+    assertEquals(new SNumber(0.5), model.getCell(new Coord(1, 1)));
+  }
+
+
+
 
   public static final class WorksheetModel extends WorksheetModelTest {
-
     @Override
     public Worksheet wsm() {
       return new edu.cs3500.spreadsheets.model.WorksheetModel();
