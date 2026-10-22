@@ -1,3 +1,21 @@
+# Project Overview
+
+This project is the final assignment for the course [CS 3500 (Fall 2019)](https://course.ccs.neu.edu/cs3500f19/). I completed it independently with some support from the online community. Thanks to OSSU!
+
+![Screenshot](resources/screenshotMultEdit.png)
+
+
+## Easy Run :)
+
+- Download Java 11. This project has been tested and works with Java 11.
+- Navigate to the `resources` folder.
+- Open your command prompt or terminal.
+- Run the following command:
+  ```bash
+  java -jar hw_09_assignment.jar -multEdit
+  ```
+
+Take a look below for more information.
 # Textual 
 <p>TextualSave , TextualRender </p>
 I diced to make to sperated interface one for render another for save the model 
@@ -110,3 +128,8 @@ the content cell will be clip if its wider than the `cellWidth` that i decide to
 - ADD `WorkBookAdaptorTest`.
 - ADD `BeyondGood -in wb.gOOD -multEdit` AND `BeyondGood -multEdit`
 - ADD `"BeyondGood -in wb.gOOD -eval-wb A!A1` to BeyondGood
+
+
+
+### what is the idea come from?
+This project is the final assignment for the course https://course.ccs.neu.edu/cs3500f19/. I completed it independently with some support from the online community. Thanks to OSSU!
